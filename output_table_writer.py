@@ -10,7 +10,7 @@ import pandas as pd
 log = logging.getLogger("logger")
 print(log)
 
-'''
+#'''
 queries = []
 def output(queries,query_conn):
     try:
@@ -34,12 +34,18 @@ def output(queries,query_conn):
         log.error("Error occurred due to no query" + str(e))
         print(str(e))
         output = str(e)
-        
+        flag = True
+    return output, flag
 
+def exception_validation(output):
+    if "error" in output.lower():
+        output = (output)
+        
+#'''
 
 
 output(queries)
-'''
+
 
 print("Reading csv file...")
 result = pd.read_csv('/Users/sanchitbhardwaj/PycharmProjects/Testing_Automation/costs.csv')
