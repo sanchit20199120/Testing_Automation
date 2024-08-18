@@ -8,8 +8,6 @@ def input_validation(source_query,target_query,expected_result):
         comment = comment = "Expected result should be null"
     if comment != '':
         flag = True
-    print(flag)
-    print(comment)
     return flag, comment
 
 
