@@ -2,13 +2,8 @@ import datetime
 import logging
 import os
 import pandas as pd
-import sys
 import snowflake.connector
-from snowflake.connector.pandas_tools import write_pandas
-from connector import aws_secret
 from connector import connection
-import input_validation
-import output_table_writer
 import warnings
 warnings.filterwarnings("ignore")
 
