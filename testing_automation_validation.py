@@ -86,6 +86,105 @@ def validation(arg):
 
             except BaseException as e:
                 print(e)
+
+            try:
+                out_df = pd.DataFrame(
+                    columns= ['OUTPUT_ID', 'JOB_ID', 'ISRT_DT_TM', 'WORKSTREAM_NAME',
+                              'DATA_SRC_NAME', 'ADO_TESTCASE_NO', 'TEST_STEP', 'TESTCASE_DESC',
+                              'SOURCE_QUERY', 'TARGET_QUERY','EXPECTED_RESULT', 'TEST_SUITES',
+                              'TESTCASE_STATUS', 'TESTED_BY', 'COMMENTS'])
+
+                out_df.loc[len(out_df.index)] = [output_id, row['JOB_ID'], date_time, row['WORKSTREAM_NAME'],row['DATA_SRC_NAME'],
+                                                 row['ADO_TESTCASE_NO'],row['TEST_STEP'],row['TESTCASE_DESC'],row['SOURCE_QUERY'],
+                                                 row['TARGET_QUERY',],row['EXPECTED_RESULT'],row['TEST_SUITES'], test_case_status, tested_by,
+                                                 comment]
+
+                result_df = pd.DataFrame(
+                    columns= ['OUTPUT_JOB_ID', 'ISRT_DT_TM', 'OUTPUT_ID', 'SOURCE_QUERY_OUTPUT', 'TARGET_QUERY_OUTPUT'])
+
+                result_df.loc[len(result_df.index)] = [test_run_job_id, str(date_time), output_id, src_out, tgt_out]
+
+                source_result_exploded =  result_df.explode('SOURCE_QUERY_OUTPUT')
+                source_result_exploded = source_result_exploded.reset_index(drop = True)
+
+                target_result_exploded = result_df.explode('TARGET_QUERY_OUTPUT')
+                target_result_exploded = target_result_exploded.reset_index(drop=True)
+
+                fill_values = {
+                    "OUTPUT_JOB_ID" : test_run_job_id,
+                    "ISRT_DT_TM" : str(date_time),
+                    "OUTPUT_ID" : output_id,
+                }
+
+                result_set = pd.concat ([source_result_exploded,target_result_exploded], axis = 1).fillna(value= fill_values)
+
+                filtered_result_set = result_set.iloc[:,list(range(0,4))+[9]]
+
+                if test_case_status == 'INVALID':
+                    cursor = conn.cursor()
+                    update_query = "UPDATE " + input_table + " SET IS_ACTIVE = 'N', IS_AUTOMATION_ENABLED = 'N' WHERE ADO_TESTCASE_NO = '" + row['ADO_TESTCASE_NO'] + "' AND TEST_STEP = '" + row['TEST_STEP'] + "' AND JOB_ID = '" + row['JOB_ID'] + "'"
+                    cursor.execute(update_query)
+                    conn.commit()
+
+            except BaseException as e:
+                print(e)
+
+            out_df = out_df.applymap(single_quote)
+
+            filtered_result_set['contains_brace_source'] = filtered_result_set['SOURCE_QUERY_OUTPUT'].apply(contains_brace)
+            filtered_result_set['contains_brace_target'] = filtered_result_set['TARGET_QUERY_OUTPUT'].apply(contains_brace)
+
+            if filtered_result_set['contains_brace_source'].any() and filtered_result_set['contains_brace_target'].any():
+                filtered_result_set['SOURCE_QUERY_OUTPUT'] = filtered_result_set['SOURCE_QUERY_OUTPUT'].apply(lambda x : convert_single_to_double_quotes(x) if pd.notna(x) else x)
+                filtered_result_set['TARGET_QUERY_OUTPUT'] = filtered_result_set['TARGET_QUERY_OUTPUT'].apply(lambda x : convert_single_to_double_quotes(x) if pd.notna(x) else x)
+
+            elif filtered_result_set['contains_brace_source'].any() and not filtered_result_set['contains_brace_target'].any():
+                filtered_result_set['SOURCE_QUERY_OUTPUT'] = filtered_result_set['SOURCE_QUERY_OUTPUT'].apply(convert_single_to_double_quotes)
+
+            elif filtered_result_set['contains_brace_target'].any() and not filtered_result_set['contains_brace_source'].any():
+                filtered_result_set['TARGET_QUERY_OUTPUT'] = filtered_result_set['TARGET_QUERY_OUTPUT'].apply(convert_single_to_double_quotes)
+
+
+            filtered_result_set = filtered_result_set.iloc[:,:5]
+
+            try:
+                sql_query = 'INSERT INTO ' + output_table + ' (OUTPUT_ID, JOB_ID, INPUT_JOB_ID, ISRT_DT_TM, WORKSTREAM_NAME,' \
+                            'DATA_SRC_NAME, ADO_TESTCASE_NO,' \
+                            'TEST_STEP, TESTCASE_DESC, SOURCE_QUERY, TARGET_QUERY, EXPECTED_RESULT, TEST_SUITES,' \
+                            'TESTCASE_STATUS, TESTED_BY, COMMENTS) VALUES'
+
+                for index, row in out_df.iterrows():
+                    sql_query = sql_query + "(" + str(row['OUTPUT_ID']) + "," +test_run_job_id + "," +str(
+                        row['JOB_ID']) + "," + str(row['ISRT_DT_TM']) + "," + str(
+                        row['WORKSTREAM_NAME']) + "," + str(row['DATA_SRC_NAME']) + "," +str(
+                        row['ADO_TESTCASE_NO']) + "," + str(row['TEST_STEP']) + "," + str(
+                        row['TESTCASE_DESC']) + "," + str(row['SOURCE_QUERY']) + "," + str(
+                        row['TARGET_QUERY']) + "," + str(row['EXPECTED_RESULT']) + "," + str(
+                        row['TEST_SUITES']) + "," + str(row['TESTCASE_STATUS']) + "," + str(
+                        row['TESTED_BY']) + "," + str(row['COMMENTS']) + "),"
+
+
+            except BaseException as e:
+                print(e)
+
+            try:
+                pd.read_sql_query(sql_query[:-1], conn)
+
+                result_table_split = result_table.split('.')[2]
+                print(result_table_split)
+
+                success, nchunks, nrows, _ = write_pandas(conn, filtered_result_set, result_table_split)
+                if success:
+                    print(f"Successfully insertted {nrows} rows into {result_table}")
+                else:
+                    print("FAiled to insert data in {result_table} ")
+
+                print("Completed")
+
+            except BaseException as e:
+                print(e)
+        print("SUCCESS")
+
     except BaseException as e:
         log.error("Error occurred while validating the table")
         log.error("Error: " + str(e))
