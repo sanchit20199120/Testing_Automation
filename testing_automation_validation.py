@@ -34,11 +34,11 @@ def validation(arg):
         dsn_meta, input_table, output_table, result_table, schema, database = connection.conn(env)
         log_dsn_name = aws_secret.get_dsn(dsn_meta)
 
-        #snowflake connection
+        # snowflake connection
         conn = snowflake.connector.connect(user = log_dsn_name['id'], password = log_dsn_name['secret'],
                                            account = log_dsn_name['host'], schema = schema, database = database)
 
-        master_list = pd.read_sql_query("SELECT * FROM " + input_table + " WHERE IS_ACTIVE = 'Y' AND IS_AUTOMATION_ENABLED = 'Y' AND WORKSTREAM_NAME ='" + workstream_name + "'AND DATA_SRC_NAME='" + data_source_name +  )
+        master_list = pd.read_sql_query("SELECT * FROM " + input_table + " WHERE IS_ACTIVE = 'Y' AND IS_AUTOMATION_ENABLED = 'Y' AND WORKSTREAM_NAME ='" + workstream_name + "'AND DATA_SRC_NAME='" + data_source_name + "' AND JOB_ID = (SELECT MAX(JOB_ID) FROM " + input_table + " WHERE IS_ACTIVE ='Y' AND IS_AUTOMATION_ENABLED = 'Y' AND WORKSTREAM_NAME ='" + workstream_name + "'AND DATA_SRC_NAME='" + data_source_name + "')   ORDER By  TEST_SUITES, ADO_TESTCASE_NO, TEST_STEP", conn)
         master_list.fillna('',inplace= True)
 
         dq_check_job_seq = pd.read_sql_query("SELECT SCDP_DW" + env + "_DB.QUALITY.TEST_AUTOMATION_JOB_SEQ.nextval",conn)
