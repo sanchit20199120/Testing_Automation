@@ -1,0 +1,2 @@
+﻿WORKSTREAM_NAME,DAT_SRC_NAME,ADO_TESTCASE_NO,TEST_STEP,TEST_CASE_DESC,SOURCE_QUERY,TARGET_QUERY,EXPECTED_RESULTS,IS_ACTIVE,IS_AUTOMATION_ENABLED,TEST_SUITES,COMMENT,INSERTED_BY
+Data Transformation ,CBS,1010,1,Count Match between source and target,select count(*) from source table ,select count(*) from target table ,,Y,Y,SC_COUNT_MATCH,,bhards9
